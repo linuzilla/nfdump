@@ -129,7 +129,7 @@ static void daemonize(void);
 static void SetPriv(char *userid, char *groupid );
 
 static void run(packet_function_t receive_packet, int socket, repeater_t *repeater, 
-	time_t twin, time_t t_begin, int report_seq, int use_subdirs, char *time_extension, int compress);
+	time_t twin, time_t t_begin, int report_seq, int use_subdirs, char *time_extension, int compress, send_peer_t *peer);
 
 /* Functions */
 static void usage(char *name) {
@@ -164,6 +164,7 @@ static void usage(char *name) {
 					"-T\t\tInclude extension tags in records.\n"
 					"-4\t\tListen on IPv4 (default).\n"
 					"-6\t\tListen on IPv6.\n"
+                    "-H\t\tIP[/port]\tconvert v9 flow to v5 flow to IP on the fly. (default 9991 port)\n"
 					"-V\t\tPrint version and exit.\n"
 					"-Z\t\tAdd timezone offset to filename.\n"
 					, name);
@@ -357,7 +358,7 @@ static void format_file_block_header(data_block_header_t *header) {
 #include "collector_inline.c"
 
 static void run(packet_function_t receive_packet, int socket, repeater_t *repeater, 
-	time_t twin, time_t t_begin, int report_seq, int use_subdirs, char *time_extension, int compress) {
+	time_t twin, time_t t_begin, int report_seq, int use_subdirs, char *time_extension, int compress, send_peer_t *peer) {
 common_flow_header_t	*nf_header;
 FlowSource_t			*fs;
 struct sockaddr_storage nf_sender;
@@ -681,7 +682,7 @@ srecord_t	*commbuff;
 				Process_v5_v7(in_buff, cnt, fs);
 				break;
 			case 9: 
-				Process_v9(in_buff, cnt, fs, NULL);
+				Process_v9(in_buff, cnt, fs, peer);
 				break;
 			case 10: 
 				Process_IPFIX(in_buff, cnt, fs);
@@ -754,6 +755,14 @@ time_t 	twin, t_start;
 int		sock, do_daemonize, expire, spec_time_extension, report_sequence;
 int		subdir_index, sampling_rate, compress;
 int		c, i;
+send_peer_t peer = {
+        .hostname = NULL,
+        .port = "9991",
+        .mcast = 0,
+        .family = AF_UNSPEC,
+        .sockfd = 0
+};
+send_peer_t *v5peer = NULL;
 #ifdef PCAP
 char	*pcap_file = NULL;
 #endif
@@ -788,7 +797,7 @@ char	*pcap_file = NULL;
 	extension_tags	= DefaultExtensions;
 	dynsrcdir		= NULL;
 
-	while ((c = getopt(argc, argv, "46ef:whEVI:DB:b:jl:J:M:n:N:p:P:R:S:s:T:t:x:Xru:g:yzZ")) != EOF) {
+	while ((c = getopt(argc, argv, "46ef:whEVI:DB:b:H:jl:J:M:n:N:p:P:R:S:s:T:t:x:Xru:g:yzZ")) != EOF) {
 		switch (c) {
 			case 'h':
 				usage(argv[0]);
@@ -1009,6 +1018,27 @@ char	*pcap_file = NULL;
 					exit(255);
 				}
 				break;
+            case 'H': {
+                char *p = strchr(optarg, '/');
+
+                if ( p ) {
+                    *p++ = '\0';
+                    peer.port = strdup(p);
+                }
+                peer.hostname = strdup(optarg);
+                v5peer = &peer;
+
+                peer.sockfd = Unicast_send_socket (peer.hostname, peer.port, peer.family, 0,
+                                                   &peer.addr, &peer.addrlen );
+                if ( peer.sockfd <= 0 ) {
+                    exit(255);
+                }
+
+                peer.send_buffer = malloc(1500);
+
+                Init_v5_v7_output(&peer);
+
+                break; }
 			default:
 				usage(argv[0]);
 				exit(255);
@@ -1224,7 +1254,7 @@ char	*pcap_file = NULL;
 
 	LogInfo("Startup.");
 	run(receive_packet, sock, repeater, twin, t_start, report_sequence, subdir_index, 
-		time_extension, compress);
+		time_extension, compress, v5peer);
 	close(sock);
 	kill_launcher(launcher_pid);
 

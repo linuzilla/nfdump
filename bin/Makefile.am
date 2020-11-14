@@ -1,5 +1,5 @@
 
-bin_PROGRAMS = nfcapd nfdump nfreplay nfexpire nfanon
+bin_PROGRAMS = nfcapd nfdump nfreplay nfexpire nfanon nfcap9to5d
 check_PROGRAMS = nftest nfgen nfreader
 
 EXTRA_DIST = applybits_inline.c nffile_inline.c collector_inline.c inline.c nfdump_inline.c heapsort_inline.c test.sh nfdump.test.out nfdump.test.diff
@@ -92,6 +92,12 @@ nfcapd_SOURCES = nfcapd.c \
 	$(nfnet) $(collector) $(nfv1) $(nfv5v7) $(nfv9) $(ipfix) $(bookkeeper) $(expire)
 nfcapd_LDADD = -lnfdump 
 nfcapd_DEPENDENCIES = libnfdump.la
+
+nfcap9to5d_SOURCES = nfcap9to5d.c \
+	$(nfstatfile) $(launch) \
+	$(nfnet) $(collector) $(nfv1) $(nfv5v7) $(nfv9) $(ipfix) $(bookkeeper) $(expire)
+nfcap9to5d_LDADD = -lnfdump 
+nfcap9to5d_DEPENDENCIES = libnfdump.la
 
 nfpcapd_SOURCES = nfpcapd.c \
 	$(pcaproc) $(netflow_pcap) \

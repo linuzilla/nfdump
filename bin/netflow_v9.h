@@ -319,7 +319,7 @@ typedef struct common_header_s {
 /* prototypes */
 int Init_v9(int v, uint32_t sampling, uint32_t overwrite);
 
-void Process_v9(void *in_buff, ssize_t in_buff_cnt, FlowSource_t *fs);
+void Process_v9(void *in_buff, ssize_t in_buff_cnt, FlowSource_t *fs, send_peer_t *peer);
 
 void Init_v9_output(send_peer_t *peer);
 

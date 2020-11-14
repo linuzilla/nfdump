@@ -1,3 +1,6 @@
+# CLion files
+.idea
+
 # Object files
 *.o
 *.ko
@@ -82,6 +85,7 @@
 /bin/nftrack
 /bin/scanner.c
 /bin/sfcapd
+/bin/nfcap9to5d
 /extra/nftrack/.dirstamp
 
 # Generated docs
